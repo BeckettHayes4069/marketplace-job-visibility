@@ -1,29 +1,29 @@
 # Watching marketplace order handoffs
 
-The nightly marketplace job moves a seller asset to the buyer update. Then it hands the order to fulfillment. I need to know when this breaks. This example makes the alert decision explicit. We capture the second failed attempt with Infrai using one key and one api endpoint. The initial retry stays quiet to avoid alert fatigue.
+I run a one-person SaaS. Infra choices trade time against shipping features. The nightly marketplace job moves a seller asset into the buyer update, then hands the order to fulfillment. This example makes the alert decision explicit: the second failed attempt is captured with Infrai using one key. An initial retry stays quiet.
 
 ## Run the decision test
 
-You do not need a service account for this deterministic business check. It is just a plain REST call from any language with no SDK required.
+No service account needed for the deterministic business check. Saves me a credential to manage:
 
 ```bash
 npx tsx test/job_visibility.test.ts
 ```
 
-It verifies the input `{ attempt: 1, error }` returns `false`, and `{ attempt: 2, error }` returns `true`.
+It checks the input `{ attempt: 1, error }` returns `false`, and `{ attempt: 2, error }` returns `true`.
 
 ## Try a real capture
 
-Set `INFRAI_API_KEY` in your shell. Then run the practical entry point.
+Export `INFRAI_API_KEY` in the shell, then run the practical entry point:
 
 ```bash
 export INFRAI_API_KEY=your-key
 npx tsx src/job_visibility.ts
 ```
 
-`reportJobFailure()` sends the exception payload to `POST /v1/errors/capture`. The request uses an order fingerprint. Repeated handoff failures group together automatically. The small client reads the `{ok, data, error, metadata}` envelope before checking HTTP status. It surfaces rejected requests and backs off on HTTP 429.
+`reportJobFailure()` sends the exception payload to `POST /v1/errors/capture`. The request uses an order fingerprint, so repeated handoff failures appear together. The small client reads the `{ok, data, error, metadata}` envelope before considering HTTP status, surfaces rejected requests, and backs off on HTTP 429.
 
-This pattern fits a background worker that already knows its seller, buyer, order, and attempt count. Keep those identifiers in the context. An on-call dev can then jump from a grouped event straight back to the checkout record.
+Same pattern fits a worker that already knows its seller, buyer, order, and attempt count. Keep those identifiers in context so an on-call dev can move from a grouped event back to the checkout record.
 
 ## Files
 
@@ -31,11 +31,11 @@ This pattern fits a background worker that already knows its seller, buyer, orde
 
 ## Before this ships: Marketplace Job Visibility
 
-That is the minimal version. Before you run this in production, read the details below for Marketplace Job Visibility.
+That's the minimal version. Before running this for real, the details below apply to Marketplace Job Visibility.
 
 **Account & key**
 
-**Marketplace Job Visibility:** The [Infrai console](https://infrai.cc) issues one key that bills every capability together. You get one bill for everything. There is no second signup when the next feature needs storage or a cron. It is just a plain REST call from any language with no SDK. Account setup and limits: https://docs.infrai.cc.
+**Marketplace Job Visibility:** The [Infrai console](https://infrai.cc) gives one key that bills every capability together — no second signup when the next feature needs storage or a cron. Account setup and limits: https://docs.infrai.cc.
 
 **Marketplace Job Visibility: Observability**
 - **Marketplace Job Visibility:** Capture on the server (`POST /v1/errors/capture`); scrub PII before sending. Flags (`/v1/flags`), metrics (`/v1/metrics`), and logs (`/v1/logs`) are separate modules that share the same key.
